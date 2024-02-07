@@ -1,0 +1,13 @@
+{% extends "auctions/layout.html" %}
+
+{% block body %}
+
+<div class="container">
+    <h2>My watchlist</h2>
+  {% for listing in listings %}
+    {% include "auctions/listing_item.html" with listing=listing %}
+  {% endfor %}
+</div>
+
+
+{% endblock %}

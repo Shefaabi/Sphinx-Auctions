@@ -1,0 +1,115 @@
+{% extends 'auctions/layout.html' %}
+
+
+{% block body %}
+
+<!-- feedback messages -->
+{% include 'auctions/messages.html' %}
+
+<div class="container">
+    <div class="row mb-3">
+        <div class="col-md-8">
+        <!-- listing details -->
+          <h2>Listing: {{ listing.title }}</h2>
+
+          {% if listing.image_url %}
+              <img src="{{ listing.image_url }}" alt="{{ listing.title }}" width="500px" height="300px">
+          {% else %}
+              <img src="https://placehold.co/500x300" alt="Default Image" >
+          {% endif %}
+
+          <p>{{ listing.description }}</p>
+
+          <h6>Details:</h6>
+          <ul>
+              <li> listed by {{ listing.seller.username  }}</li>
+              <li> Category: 
+                  {% if listing.category %}
+                    {{listing.category.name }}
+                  {% else %}
+                     No Category listed 
+                  {% endif %}
+              </li>
+          </ul>
+
+          <h5>Price: ${{ listing.get_current_price }} </h5>
+        </div>  
+    </div>
+        <!-- buttons -->
+        <div class="row border-bottom">
+          <div class="col my-3">
+            {% if user.id == listing.seller.id %}
+              <button type="button" class="btn btn-danger btn-sm"><a href="{% url 'close' listing_id=listing.id %}" style="color: white; text-decoration: none;">Close Auction</a></button>
+            {% endif %}
+
+            {% if watchlist %}
+              <button type="button" class="btn btn-primary btn-sm"> <a href="{% url 'handle_watchlist' listing.id %}" style="color: white; text-decoration: none;">remove from watchlist</a></button>
+            {% else %}
+              <button type="button" class="btn btn-primary btn-sm"> <a href="{% url 'handle_watchlist'  listing.id %}" style="color: white; text-decoration: none;">add to watchlist</a></button>
+            {% endif %}
+          </div>
+        </div>  
+   
+   
+   <!-- bids form -->
+   <div class="row my-3">
+      <div class="col">
+          {% if listing.is_active %}
+          {{listing.bids.all|length}} bid(s) so far. 
+          {% if listing.bids.all|length > 0 and user == current_bid.bidder %}
+              Your bid is the current bid.
+          {% endif %}
+          {% else %}
+              {% if listing.bids.all|length > 0 and user == current_bid.bidder %}
+              Congratulations! You are the winner.
+              {% else %}
+              Closed.
+              {% endif %}
+          {% endif %}
+      </div> 
+   </div>
+
+
+  <div class="row border-bottom">
+      <div class="col">
+          <form action="{% url 'bid' listing_id=listing.id %}" method="post" >
+              <div class="form-group">
+                  <input type="text" placeholder="Bid" name="price" class="form-control">
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm mb-2">Place Bid</button>
+          {% csrf_token %}
+          </form>
+      </div>
+  </div>
+   
+   <!-- comments section-->
+   <div class="row mt-4">
+     <div class="col-12">
+        <h3>Comments</h3>
+        {% for comment in listing.comments.all %}
+        <div>
+            <p><strong>{{ comment.writer.username }}:</strong> {{ comment.content }}</p>
+            <p class="text-muted">{{ comment.created_at}}</p>
+        </div>
+      
+        {% endfor %}
+     </div>
+   </div>
+   
+   <!-- comment form -->
+   <div class="row">
+      <div class="col">
+        <form action="{% url 'comment' listing_id=listing.id %}" method="post" >
+        {% csrf_token %}
+            <div class="form-group">
+              <label for="comment">Your comment:</label>
+              <textarea  name="content" id="comment" class="form-control" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Post</button>
+        </form>
+      </div>
+    </div>
+
+</div>
+
+{% endblock %}

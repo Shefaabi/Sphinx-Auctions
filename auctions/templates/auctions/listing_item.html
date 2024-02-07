@@ -1,0 +1,18 @@
+  <div class="row mb-3 border"> 
+      <div class="col-12">
+        <div class="d-flex align-items-center"> 
+          {% if listing.image_url %}
+            <img src="{{ listing.image_url }}" alt="{{ listing.title }}" style="width: 200px; height: 200px; margin-right: 20px;"> <!-- Adjust dimensions as needed -->
+          {% else %}
+            <img src="https://placehold.co/200" alt="Default Image" style="width: 200px; height: auto; margin-right: 20px;">
+          {% endif %}
+          
+          <div>
+            <h2><a href="{% url 'listing' listing.id %}">{{ listing.title }}</a></h2>
+            <p><strong>Price:</strong> $ {{ listing.get_current_price }}</p> 
+            <p>{{ listing.description }}</p>
+            <p><small>Created {{ listing.created_at }}</small></p>
+          </div>
+        </div>
+      </div>
+    </div>

@@ -1,0 +1,10 @@
+{% extends "auctions/layout.html" %}
+
+{% block body %}
+<div class="container">
+    <h2> {{category.name}} Category </h2>
+  {% for listing in listings %}
+    {% include "auctions/listing_item.html" with listing=listing %}
+  {% endfor %}
+</div>
+{% endblock %}
