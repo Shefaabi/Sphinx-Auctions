@@ -168,7 +168,7 @@ def bid(request,  listing_id):
                 listing.bids.create(bidder=bidder, listing=listing, amount=price)
             else:
                 raise ValueError(
-                    f'Your bid price should be greater than ${highest_bid}')
+                    f'Your bid price should be greater than ${highest_bid.amount}')
         except ValueError as e:
             messages.error(request, str(e))
 
