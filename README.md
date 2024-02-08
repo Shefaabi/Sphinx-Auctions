@@ -14,7 +14,7 @@ This project is my submission for the Commerce project, part of Harvard Universi
 - **Categories**: Categorized listings for easier navigation and discovery based on interests.
 - **Django Admin Interface**: An admin interface for site administrators to manage listings, comments, and bids.
 
-### Prerequisites
+## Prerequisites
 
 - Python
 - Django
@@ -49,8 +49,6 @@ Ensure you have Python and Django installed on your system. If not, follow the i
 - **Comment**: Allows users to comment on listings, with fields for the comment text and associated listing.
 - **Watchlist**: Represents the user's watchlist, containing references to the User model and the Listing model.
 
-
-Category: Represents different categories under which listings can be classified (e.g., Electronics, Fashion, Home). Each listing can be associated with a category, making it easier for users to browse listings within specific categories of interest.
 ## How to Contribute
 
 This project is part of my coursework and is not currently open for external contributions. Feedback and suggestions are welcome.
