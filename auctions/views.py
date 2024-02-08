@@ -186,11 +186,8 @@ def close(request, listing_id):
             return HttpResponseRedirect(reverse("listing", args=[listing_id]))
 
         listing.is_active = False
-
-        # winning_bid = listing.get_current_price()
-        
-        # winning_bid.is_win = True
         listing.save()
+        
         messages.success(request, "The listing is closed.")
         return HttpResponseRedirect(reverse("index"))
 
