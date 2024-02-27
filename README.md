@@ -43,7 +43,7 @@ Ensure you have Python and Django installed on your system. If not, follow the i
 
 ## Models
 
-- **User**: Inherits from `AbstractUser`, customized with additional fields as needed.
+- **User**: Inherits from `AbstractUser.
 - **Listing**: Represents auction listings with fields for title, description, starting bid, image URL, and category.
 - **Category**: Represents different categories under which listings can be classified (e.g., Electronics, Fashion, Home).
 - **Bid**: Tracks bids on auction listings, including bid amount and the user who placed the bid.
