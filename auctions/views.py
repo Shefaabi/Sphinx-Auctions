@@ -1,16 +1,30 @@
-from django.contrib import messages
+import json
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseNotAllowed, HttpResponseRedirect, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from .models import User, Listing, Bid, Comment, Category, Watchlist
+from .models import Following, Like, User, Post
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-
+from django.core.paginator import Paginator
 
 def index(request):
-    return render(request, "auctions/index.html", {"listings": Listing.objects.filter(is_active=True)})
+    current_user = request.user
+
+    post_list = Post.objects.all().order_by("-created_at")
+    paginator = Paginator(post_list, 10)
+    page_number = request.GET.get('page')
+    page_posts = paginator.get_page(page_number)
+    
+    liked_posts = []
+    if current_user.is_authenticated:
+           liked_posts = current_user.likes.all()
+           liked_posts = [like.post for like in liked_posts]
+   
+    return render(request, "network/index.html", {"posts":page_posts, "liked_posts":liked_posts})
+
 
 
 def login_view(request):
@@ -26,11 +40,11 @@ def login_view(request):
             login(request, user)
             return HttpResponseRedirect(reverse("index"))
         else:
-            return render(request, "auctions/login.html", {
+            return render(request, "network/login.html", {
                 "message": "Invalid username and/or password."
             })
     else:
-        return render(request, "auctions/login.html")
+        return render(request, "network/login.html")
 
 
 def logout_view(request):
@@ -47,7 +61,7 @@ def register(request):
         password = request.POST["password"]
         confirmation = request.POST["confirmation"]
         if password != confirmation:
-            return render(request, "auctions/register.html", {
+            return render(request, "network/register.html", {
                 "message": "Passwords must match."
             })
 
@@ -56,154 +70,155 @@ def register(request):
             user = User.objects.create_user(username, email, password)
             user.save()
         except IntegrityError:
-            return render(request, "auctions/register.html", {
+            return render(request, "network/register.html", {
                 "message": "Username already taken."
             })
         login(request, user)
         return HttpResponseRedirect(reverse("index"))
     else:
-        return render(request, "auctions/register.html")
-
-
-def category(request):
-    return render(request, "auctions/category.html", {"categories": Category.objects.all()})
-
-
-def category_listing(request, id):
-    return render(request, "auctions/category_listing.html", {"listings": Listing.objects.filter(category=id), "category": Category.objects.get(id=id)})
-
-
-def listing(request, id):
-    requested_listing = Listing.objects.get(id=id)
-    current_bid = requested_listing.bids.order_by("amount").last()
-
-    try:
-        watchlist = Watchlist.objects.get(listing=requested_listing, user=request.user)
-        is_in_watchlist = True
-    except:
-        is_in_watchlist = False
-
-    return render(request, 'auctions/listing.html', {"listing": requested_listing, "watchlist": is_in_watchlist, "current_bid":current_bid})
+        return render(request, "network/register.html")
 
 
 @login_required
-def create_listing(request):
-    if request.method == "POST":
-        title = request.POST["title"]
-        description = request.POST["description"]
-        starting_price = request.POST["starting_price"]
-        img_url = request.POST["image_url"]
-        category_name = request.POST["category"]
+@csrf_exempt
+def create_post(request):
+    if request.method == "POST": 
+        content = request.POST["post-content"]
 
-        try:
-            category = Category.objects.get(name=category_name)
-        except Category.DoesNotExist:
-            category = None
-
-       
-        seller = request.user
-        listing = Listing(title=title, description=description, starting_price=starting_price,
-                          image_url=img_url, category=category, seller=seller)
-        listing.save()
-
-        starting_bid = Bid(bidder=seller, listing=listing, amount=starting_price)
-        starting_bid.save()
-
-        return redirect("listing", listing.id)
-
-    else:
-        return render(request, "auctions/listing_form.html", {"categories": Category.objects.all()})
-
-
-@login_required
-def watchlist_view(request):
-    user = request.user
-    watchlist_items = Watchlist.objects.filter(user=user)
-    listings = [item.listing for item in watchlist_items]
-    return render(request, "auctions/watchlist.html", {"listings": listings})
-
-
-@login_required
-def watchlist(request, listing_id):
-    user = request.user
-    listing = Listing.objects.get(id=listing_id)
-
-    try:
-        watchlist_item = Watchlist.objects.get(user=user, listing=listing)
-        watchlist_item.delete()
-        messages.success(request, "removed from watchlist")
-    except Watchlist.DoesNotExist:
-        Watchlist.objects.create(user=user, listing=listing)
-        messages.success(request, "added to watchlist")
-
-    return HttpResponseRedirect(reverse("listing", args=[listing_id]))
-
-
-@login_required
-def bid(request,  listing_id):
-    user_id = request.user.id
-    if request.method == 'POST':
-
-        listing = Listing.objects.get(id=listing_id)
-
-        if not listing.is_active:
-            messages.error(request, "This listing is not active.")
-            return HttpResponseRedirect(reverse("listing", args=[listing_id]))
-
-        try:
-            bidder = User.objects.get(id=user_id)
-            price = request.POST["price"]
-            highest_bid = Bid.objects.filter(
-                listing=listing).order_by("amount").last()
-
-            if not price:
-                price = "0"
-
-            if price.replace(".", "", 1).isdigit():
-                price = float(price)
-            else:
-                raise ValueError("Your input is invalid, try again :)")
-
-            if price > highest_bid.amount:
-                listing.bids.create(bidder=bidder, listing=listing, amount=price)
-            else:
-                raise ValueError(
-                    f'Your bid price should be greater than ${highest_bid.amount}')
-        except ValueError as e:
-            messages.error(request, str(e))
-
-        return HttpResponseRedirect(reverse("listing", args=[listing_id]))
-
-
-@login_required
-def close(request, listing_id):
-    user= request.user
-
-    listing = Listing.objects.get(id=listing_id)
-    if listing.seller.id == user.id:
-        if not listing.is_active:
-            messages.error(request, "The listing is already closed.")
-            return HttpResponseRedirect(reverse("listing", args=[listing_id]))
-
-        listing.is_active = False
-        listing.save()
+        if content == "":
+            return JsonResponse({"error":"Post conent cannot be empty."}, status=400)
         
-        messages.success(request, "The listing is closed.")
-        return HttpResponseRedirect(reverse("index"))
+        post = Post(user=request.user, content=content)
+        post.save()
 
-    messages.error(request, "You are not allowed to close this listing.")
-    return HttpResponseRedirect(reverse("listing", args=[listing_id]))
+        return redirect("index")
+       
+    else:
+        return HttpResponseNotAllowed(['POST'])
 
 
 @login_required
-def comment(request, listing_id):
+@csrf_exempt
+def edit_post(request, post_id): 
+    if request.method == "PUT":
+        user = request.user 
+        body = json.loads(request.body)
+        try:
+          post = Post.objects.get(pk=post_id)
+        except Post.DoesNotExist: 
+            return JsonResponse({"error": "Post does not exist."})
+        
+        if post.user != user: return JsonResponse({"error":"You are not allowed to edit the post."})
+        
+        post.content = body
+        post.save()
+
+        return JsonResponse({"message":"Post updated."}, status=200)
+
+
+
+def profile_view(request, user_id):
+    if request.method == "GET":    
+        try:
+           user = User.objects.get(pk=user_id)
+           user_posts = Post.objects.filter(user=user).order_by("-created_at")
+
+           paginator = Paginator(user_posts, 10)
+           page_number = request.GET.get('page')
+           page_posts = paginator.get_page(page_number)
+           
+           liked_posts = []
+           following = []
+           followers = []
+
+           if request.user.is_authenticated:
+               liked_posts = Like.objects.filter(user=request.user.id)
+               liked_posts = [like.post for like in liked_posts]
+    
+               following = Following.objects.filter(follower=user.id)
+               following = [obj.following for obj in following]
+    
+               followers = Following.objects.filter(following=user.id)
+               followers = [obj.follower for obj in followers]
+
+        except User.DoesNotExist:
+            return JsonResponse({"error":"User does not exist."}, status=400)
+        
+        return render(request, "network/user_profile.html", {"user_info": user, "posts": page_posts, "liked_posts": liked_posts, "following": following, "followers":followers})
+    else: 
+        return HttpResponseNotAllowed(['GET'])
+    
+@csrf_exempt 
+def follow(request, user_id):
     if request.method == "POST":
-        writer = User.objects.get(id=request.user.id)
-        listing = Listing.objects.get(id=listing_id)
-        Comment.objects.create(
-            writer=writer, content=request.POST["content"], listing=listing)
+        try :
+            user=User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return JsonResponse({"error":"User does not exist."}, status=400)
+        
+        if request.user == user:
+            return JsonResponse({"error": "You cannot follow yourself."}, status=400)
+        
+        try:
+            following = Following.objects.get(follower=request.user, following=user)
+            following.delete()
+        except Following.DoesNotExist:
+            Following.objects.create(follower=request.user, following=user)
+            
 
-        return HttpResponseRedirect(reverse("listing", args=[listing_id]))
-
+        return HttpResponseRedirect(reverse("profile-view", args=[user_id]))
+        
     else:
-        return HttpResponseRedirect(reverse("listing", args=[listing_id]))
+        return HttpResponseNotAllowed(['POST'])
+
+def following_posts(request):
+    current_user = request.user
+    following_objects = current_user.following.all()
+    posts=[]
+    
+    for following in following_objects:
+       user_posts = Post.objects.filter(user=following.following).order_by("-created_at")
+       posts.extend(list(user_posts))
+
+    paginator = Paginator(posts, 10)
+    page_number = request.GET.get('page')
+    page_posts = paginator.get_page(page_number)
+
+    
+    liked_posts = Like.objects.filter(user=request.user)
+    liked_posts = [like.post for like in liked_posts]
+    
+    return render(request, "network/following.html", {"posts": page_posts, "liked_posts":liked_posts})  
+
+
+@csrf_exempt
+def like(request, post_id):
+    user = request.user 
+    try:
+       post = Post.objects.get(pk=post_id)
+    except Post.DoesNotExist:
+        return JsonResponse({"error": "Post does not exist."})
+    
+    if request.method == 'POST': 
+       try:
+           Like.objects.get(user=user, post=post)
+           return JsonResponse({"error": "Post already liked."}, status=400)
+       
+       except Like.DoesNotExist: 
+           new_like = Like.objects.create(user=user, post=post)
+
+       return JsonResponse({"message": "Post liked successfully."}, status=201)
+
+    elif request.method == 'DELETE': 
+       try:
+           existing_like = Like.objects.get(user=user, post=post)
+           existing_like.delete()
+           return JsonResponse({"message": "Like removed successfully."}, status=200)
+       except Like.DoesNotExist:
+           return JsonResponse({"error": "No like on that post to unlike."}, status=400)
+
+    elif request.method == "GET":
+        likes_count = Like.objects.filter(post=post).count()
+        return JsonResponse({"counter":likes_count}, status=200)
+    else:
+        return JsonResponse({"error": "Only [POST, DELETE, GET] are supported."}, status=405)
