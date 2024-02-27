@@ -1,4 +1,5 @@
-# Commerce
+# Sphinx Auctions
+
 
 ## Overview
 
@@ -24,7 +25,7 @@ Ensure you have Python and Django installed on your system. If not, follow the i
 
 ## Getting Started
 1. Clone the repo or download the zip file.
-2. `cd CS50w-commerce`
+2. `cd Sphinx-Auctions`
 3. Run `python manage.py makemigrations auctions` to make migrations for the `auctions` app.
 4. Execute `python manage.py migrate` to apply migrations to the database.
 5. Start the development server with `python manage.py runserver` and visit `http://127.0.0.1:8000/` in your web browser.
