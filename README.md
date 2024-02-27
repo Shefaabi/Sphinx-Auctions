@@ -31,7 +31,7 @@ Ensure you have Python and Django installed on your system. If not, follow the i
    
 ## Technologies
 
-- **Frontend**: HTML, CSS
+- **Frontend**: HTML, Bootsrap
 - **Backend**: Django (Python)
 - **Database**: SQLite (Django's default database)
 
